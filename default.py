@@ -224,19 +224,23 @@ class Thermostat():
         # Process the response - if valid
         if response and response.ok:
             #response data in json format
-            rspJson = response.json()
-            # Overwrite default values with real values
-            # Add futher value with self.value = function( rspJson['name'] )
-            self.temp   = getTemp(rspJson['temp'])
-            self.mode   = getTMode(rspJson['tmode'])
-            self.fan    = getFMode(rspJson['fstate'])
-            self.state  = getTState(rspJson['tstate'])
-            self.hold   = getHold(rspJson['hold'])
-            if 't_heat' in rspJson:
-                self.target = getTemp(rspJson['t_heat'])
-            elif 't_cool' in rspJson:
-                self.target = getTemp(rspJson['t_cool'])
-            success = True
+            try:
+                rspJson = response.json()
+            except ValueError:
+                sucess = False
+            else:
+                # Overwrite default values with real values
+                # Add futher value with self.value = function( rspJson['name'] )
+                self.temp   = getTemp(rspJson['temp'])
+                self.mode   = getTMode(rspJson['tmode'])
+                self.fan    = getFMode(rspJson['fstate'])
+                self.state  = getTState(rspJson['tstate'])
+                self.hold   = getHold(rspJson['hold'])
+                if 't_heat' in rspJson:
+                    self.target = getTemp(rspJson['t_heat'])
+                elif 't_cool' in rspJson:
+                    self.target = getTemp(rspJson['t_cool'])
+                success = True
 
         return success
 
@@ -294,18 +298,10 @@ class SelectOptions(xbmcgui.WindowDialog):
 
         rows = len(self.optionList)
 
-        self.posX  = x
-        self.posY  = y
-
-        if width:
-            self.btnWidth = width
-        else:
-            self.btnWidth = maxlen * 16
-
-        if height:
-            self.btnHeight = height
-        else:
-            self.btnHeight = 28
+        self.posX      = x
+        self.posY      = y
+        self.btnWidth  = width or maxlen * 16
+        self.btnHeight = height or 28
 
         self.addControl(xbmcgui.ControlImage(self.posX, self.posY, self.btnWidth, rows * self.btnHeight, __panel__))
 
@@ -342,11 +338,7 @@ class SelectOptions(xbmcgui.WindowDialog):
 
     def onControl(self, control):
         label = control.getLabel()
-
-        if self.returnLabel:
-            self.select = label
-        else:
-            self.select = LabelToValue(label, self.optionList)
+        self.select = label if self.returnLabel else LabelToValue(label, self.optionList)
 
         self.close()
 
@@ -669,7 +661,7 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def setHouseTargetUp(self):
         current = self.houseTarget.getLabel()
 
-        if current and  current != strNV:
+        if current and current != strNV:
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) + 0.5)
             self.houseTarget.setLabel(new + strDegreeCelsius)
@@ -678,7 +670,7 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def setHouseTargetDn(self):
         current = self.houseTarget.getLabel()
 
-        if current and  current != strNV:
+        if current and current != strNV:
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) - 0.5)
             self.houseTarget.setLabel(new + strDegreeCelsius)
@@ -759,7 +751,7 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def setGarageTargetUp(self):
         current = self.garageTarget.getLabel()
 
-        if current and  current != strNV:
+        if current and current != strNV:
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) + 0.5)
             self.garageTarget.setLabel(new + strDegreeCelsius)
@@ -768,7 +760,7 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def setGarageTargetDn(self):
         current = self.garageTarget.getLabel()
 
-        if current and  current != strNV:
+        if current and current != strNV:
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) - 0.5)
             self.garageTarget.setLabel(new + strDegreeCelsius)
