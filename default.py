@@ -88,10 +88,10 @@ strFahrenheit       = '°F'.decode('utf-8')
 strPadding          = ' '
 
 # Custom Settings
-ipHouseThermostat    = __addon__.getSetting('ipAddress1')
-nameHouseThermostat  = __addon__.getSetting('name1')
-ipGarageThermostat   = __addon__.getSetting('ipAddress2')
-nameGarageThermostat = __addon__.getSetting('name2')
+ipHouseThermostat    = __addon__.getSetting('ipAddress1') or '1.1.1.1'
+nameHouseThermostat  = __addon__.getSetting('name1') or 'Thermostat 1'
+ipGarageThermostat   = __addon__.getSetting('ipAddress2') or '1.1.1.2'
+nameGarageThermostat = __addon__.getSetting('name2') or 'Thermostat 2'
 tempCelsius          = bool(__addon__.getSetting('tempCelsius') == 'true') # True
 colorMode            = bool(__addon__.getSetting('colorMode') == 'true') # True
 autoRefreshTime      = int(__addon__.getSetting('refreshTime')) # 30
