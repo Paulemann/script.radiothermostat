@@ -40,6 +40,14 @@ msgctxt "#32021"
 msgid "Display temperatures in °C:"
 msgstr "Afficher températures en °C:"
 
+msgctxt "#32022"
+msgid "Use color representation of operating mode:"
+msgstr "Afficher les différents modes en couleurs:"
+
+msgctxt "#32023"
+msgid "Auto refresh interval in seconds:"
+msgstr "Nombre de secondes entre les réactualisations:"
+
 msgctxt "#35000"
 msgid "Auto"
 msgstr ""

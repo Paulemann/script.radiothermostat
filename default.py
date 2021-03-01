@@ -93,8 +93,8 @@ nameHouseThermostat  = __addon__.getSetting('name1')
 ipGarageThermostat   = __addon__.getSetting('ipAddress2')
 nameGarageThermostat = __addon__.getSetting('name2')
 tempCelsius          = bool(__addon__.getSetting('tempCelsius') == 'true') # True
-colorMode            = True # bool(__addon__.getSetting('colorMode') == 'true') # True
-autoRefreshTime      = 30 # int(__addon__.getSetting('RefreshTime')) # 30
+colorMode            = bool(__addon__.getSetting('colorMode') == 'true') # True
+autoRefreshTime      = int(__addon__.getSetting('refreshTime')) # 30
 
 
 # List of dictionaries with label and value for each option
@@ -615,8 +615,9 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def update(self, refreshTime, stop):
         while not stop():
             xbmc.sleep(int(refreshTime) * 1000)
-            self.getHouseValues()
-            self.getGarageValues()
+            if not stop():
+                self.getHouseValues()
+                self.getGarageValues()
 
 
     def start(self, refreshTime):
