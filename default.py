@@ -5,7 +5,7 @@
 import xbmc, xbmcaddon, xbmcgui, xbmcvfs
 import pyxbmct
 from threading import Thread
-import json, sys, time, requests, os
+import json, sys, requests, os
 
 
 # Addon variables
@@ -95,6 +95,9 @@ nameGarageThermostat = __addon__.getSetting('name2') or 'Thermostat 2'
 tempCelsius          = bool(__addon__.getSetting('tempCelsius') == 'true') # True
 colorMode            = bool(__addon__.getSetting('colorMode') == 'true') # True
 autoRefreshTime      = int(__addon__.getSetting('refreshTime')) # 30
+
+# Time between thermostat update and read in seconds
+delayTime            = 2
 
 
 # List of dictionaries with label and value for each option
@@ -276,7 +279,7 @@ class Thermostat():
                 log('Response: {}'.format(response.text))
                 rspJson = response.json()
                 if 'success' in rspJson:
-                    time.sleep(2)
+                    xbmc.sleep(delayTime * 1000)
                     success = self.read()
 
         return success
@@ -616,19 +619,28 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.setFocus(self.buttonClose)
 
 
-    def update(self, refreshTime, stop):
-        while not stop():
-            xbmc.sleep(int(refreshTime) * 1000)
-            if not stop():
-                self.getHouseValues()
-                self.getGarageValues()
+    def autoRefresh(self, refreshTime, stop):
+
+        while True:
+            waitTime = int(refreshTime)
+            log('houseTem')
+            waitTime -= 0 if self.houseThermostat.temp == strNV else delayTime
+            waitTime -= 0 if self.garageThermostat.temp == strNV else delayTime
+            log('waitTime: {}'.format(waitTime))
+            for i in range(waitTime):
+                if stop():
+                    return
+                xbmc.sleep(1000)
+            self.getHouseValues()
+            self.getGarageValues()
+            log('next')
 
 
     def start(self, refreshTime):
         self.stopFlag = False
 
         if refreshTime:
-            Thread(target=self.update, args=(refreshTime, lambda: self.stopFlag)).start()
+            Thread(target=self.autoRefresh, args=(refreshTime, lambda: self.stopFlag)).start()
 
         self.doModal()
         self.stopFlag = True # is this really required? Or just for safety?
