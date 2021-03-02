@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="script.radiothermostat"
        name="Radio Thermostat"
-       version="0.2.3"
+       version="1.0.0"
        provider-name="Rock Chartrand, Paulemann">
   <requires>
     <import addon="xbmc.python" version="2.26.0"/>
@@ -16,7 +16,7 @@
     <summary lang="en">This addon enables control of most 3M RadioThermostat units (CT30, CT50 and CT80).</summary>
     <description lang="en">Enter the IP and Name of 1 or 2 devices connected to your internal network, and select if you want to display temperatures in Farenheit or Celsius. The thermostat Mode, Fan, Hold and Temperature settings can be adjusted on the main screen, once values are changed, apply them by pressing the "Set Values" button. Values are refreshed automatically in a configurable time interval or by pressing the "Reload" button when needed.</description>
     <summary lang="fr">Cette application permet de controller plusieurs modèles de thermostats 3M RadioThermostat (CT30, CT50 et CT80).</summary>
-    <description lang="fr">Entrez l'adresse IP et le nom de 1 ou 2 thermostats sur votre réseau local, par la suite, sélectionnez l'unitée de température désiré (Celsius ou Farenheit). Les fonctions: Mode, Fan, Hold et Température peuvent être ajustés sur l'écran principale. lorsque les valeurs sont modifiés, simplement appuyer sur "Appliquer Valeurs" pour les appliquer. Vous pouvez aussi appuyer sur "Rafraîchir" pour rafraichir les valeurs du thermostat.</description>
+    <description lang="fr">Entrez l'adresse IP et le nom de 1 ou 2 thermostats sur votre réseau local, par la suite, sélectionnez l'unitée de température désiré (Celsius ou Farenheit). Les fonctions: Mode, Fan, Hold et Température peuvent être ajustés sur l'écran principale. lorsque les valeurs sont modifiés, simplement appuyer sur "Appliquer Valeurs" pour les appliquer. Les valeurs sont rafraîchis automatiquement selon l'interval désirée. Vous pouvez aussi appuyer sur "Rafraîchir" pour actualiser manuellement les valeurs du thermostat.</description>
     <summary lang="de">Dieses Addon erlaubt die Steuerung der meisten 3M RadioThermostat Geräte (CT30, CT50 and CT80).</summary>
     <description lang="de">Konfigurierbar sind die IP-Adressen von bis zu zwei Geräten wie die wahlweise Darstellung der Temperaturwerte in Fahrenheit oder Celsius. Die Thermostat-Betriebseinstellungen lassen sich auf der Hauptseite des Addons einstellen. Vorgenommene Änderungen werden über die Schaltfläche "Anwenden" gesendet. Die Aktualisierung der Werte kann automastisch im konfigurierten Zeitintervall oder manuell, über die Schaltfläche "Aktual.", erfolgen.</description>
   </extension>

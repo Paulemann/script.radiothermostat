@@ -109,7 +109,7 @@ msgid "Exit"
 msgstr "Beenden"
 
 msgctxt "#35015"
-msgid "Set Values"
+msgid "Apply"
 msgstr "Anwenden"
 
 msgctxt "#35016"
