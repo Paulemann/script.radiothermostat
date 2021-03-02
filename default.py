@@ -623,17 +623,14 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         while True:
             waitTime = int(refreshTime)
-            log('houseTem')
             waitTime -= 0 if self.houseThermostat.temp == strNV else delayTime
             waitTime -= 0 if self.garageThermostat.temp == strNV else delayTime
-            log('waitTime: {}'.format(waitTime))
             for i in range(waitTime):
                 if stop():
                     return
                 xbmc.sleep(1000)
             self.getHouseValues()
             self.getGarageValues()
-            log('next')
 
 
     def start(self, refreshTime):
