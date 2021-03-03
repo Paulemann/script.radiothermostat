@@ -276,11 +276,15 @@ class Thermostat():
                 response = None
 
             if response and response.ok:
-                log('Response: {}'.format(response.text))
-                rspJson = response.json()
-                if 'success' in rspJson:
-                    xbmc.sleep(delayTime * 1000)
-                    success = self.read()
+                try:
+                    rspJson = response.json()
+                except ValueError:
+                    success = False
+                else:
+                    log('Response: {}'.format(response.text))
+                    if 'success' in rspJson:
+                        xbmc.sleep(delayTime * 1000)
+                        success = self.read()
 
         return success
 
@@ -360,15 +364,11 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.houseThermostat = Thermostat(ipHouseThermostat, nameHouseThermostat)
         self.garageThermostat = Thermostat(ipGarageThermostat, nameGarageThermostat)
 
-        self.housePendingChanges = False # self.setHousePendingChanges(False) -> end of __init__
-        self.garagePendingChanges = False # self.setGaragePendingChanges(False) -> end of __init__
-
-        # Set width, height and the grid parameters
-        # 23 rows, 21 columns
+        # Set width, height and the grid parameters: 23 rows, 21 columns
         self.setGeometry(950, 483, 23, 21)
 
         # Call set controls method
-        self.setControls() # -> just set defaults or empty labels -> get values  at the end of __init__
+        self.setControls()
 
         # Call set navigation method.
         self.setNavigation()
@@ -376,8 +376,11 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         # Connect Backspace button to close our addon.
         self.connect(pyxbmct.ACTION_NAV_BACK, self.close)
 
-        #self.getHouseValues(reload=False)
-        #self.getGarageValues(reload=False)
+        self.setHousePendingChanges(False)
+        self.getHouseValues(reload=False)
+
+        self.setGaragePendingChanges(False)
+        self.getGarageValues(reload=False)
 
         xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
@@ -394,28 +397,23 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         # Columns 1 & 2: TMode States
         self.houseModeOff = pyxbmct.RadioButton(strOff, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.houseModeOff, 6, 1, rowspan=2, columnspan=2)
-        self.houseModeOff.setSelected(self.houseThermostat.mode == strOff)
         self.houseModeHeat = pyxbmct.RadioButton(strHeat, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.houseModeHeat, 8, 1, rowspan=2, columnspan=2)
-        self.houseModeHeat.setSelected(self.houseThermostat.mode == strHeat)
         self.houseModeCool = pyxbmct.RadioButton(strCool, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.houseModeCool, 10, 1, rowspan=2, columnspan=2)
-        self.houseModeCool.setSelected(self.houseThermostat.mode == strCool)
         self.houseModeAuto = pyxbmct.RadioButton(strAuto, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.houseModeAuto, 12, 1, rowspan=2, columnspan=2)
-        self.houseModeAuto.setSelected(self.houseThermostat.mode == strAuto)
 
         # Columns 3 to 5: Temperature and TState
-        self.houseTemp = pyxbmct.Button(self.houseThermostat.temp, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.houseThermostat.state])
+        self.houseTemp = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.houseThermostat.state])
         self.placeControl(self.houseTemp, 6, 3, rowspan=3, columnspan=3)
-        self.houseState = pyxbmct.Label(strState.format(self.houseThermostat.state), font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
+        self.houseState = pyxbmct.Label(strNV, font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
         self.placeControl(self.houseState, 9, 3, rowspan=1, columnspan=3)
 
         # Columns 7 to 9: Fan, Hold and Target Temperature
-        self.houseTargetLabel = pyxbmct.Button(self.houseThermostat.mode if self.houseThermostat.mode == strCool or self.houseThermostat.mode == strHeat else ' ', textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.houseThermostat.mode])
+        self.houseTargetLabel = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.houseThermostat.mode])
         self.placeControl(self.houseTargetLabel, 6, 7, rowspan=1, columnspan=2)
-
-        self.houseTarget = pyxbmct.Button(self.houseThermostat.target, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.houseThermostat.mode])
+        self.houseTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.houseThermostat.mode])
         self.placeControl(self.houseTarget, 7, 7, rowspan=2, columnspan=2)
 
         self.houseTargetUp = pyxbmct.Button(u'\u25B2', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
@@ -425,18 +423,15 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         self.houseFan = pyxbmct.Button(strPadding + strFan, textOffsetX=0, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
         self.placeControl(self.houseFan, 10, 7, rowspan=2, columnspan=3)
-        self.houseFan.setLabel(label2=self.houseThermostat.fan + strPadding)
 
         self.houseHold = pyxbmct.RadioButton(strPadding + strHold, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.houseHold, 12, 7, rowspan=2, columnspan=3)
-        self.houseHold.setSelected(self.houseThermostat.hold == strOn)
 
         # Reload and set buttons in row 16, columns 2 to 4 and 6 to 8
         self.houseReload = pyxbmct.Button(strReload, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.houseReload, 16, 2, rowspan=2, columnspan=3)
         self.houseSet = pyxbmct.Button(strSet, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y) # , textColor=WHITE if self.housePendingChanges else GREY)
         self.placeControl(self.houseSet, 16, 6, rowspan=2, columnspan=3)
-        self.houseSet.setEnabled(self.housePendingChanges)
 
         # Vertical Line
         vLine =pyxbmct.Image(__verticalLine__, aspectRatio=1)
@@ -452,28 +447,23 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         # Columns 11 & 12: TMode States
         self.garageModeOff = pyxbmct.RadioButton(strOff, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.garageModeOff, 6, 11, rowspan=2, columnspan=2)
-        self.garageModeOff.setSelected(self.garageThermostat.mode == strOff)
         self.garageModeHeat = pyxbmct.RadioButton(strHeat, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.garageModeHeat, 8, 11, rowspan=2, columnspan=2)
-        self.garageModeHeat.setSelected(self.garageThermostat.mode == strHeat)
         self.garageModeCool = pyxbmct.RadioButton(strCool, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.garageModeCool, 10, 11, rowspan=2, columnspan=2)
-        self.garageModeCool.setSelected(self.garageThermostat.mode == strCool)
         self.garageModeAuto = pyxbmct.RadioButton(strAuto, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.garageModeAuto, 12, 11, rowspan=2, columnspan=2)
-        self.garageModeAuto.setSelected(self.garageThermostat.mode == strAuto)
 
         # Columns 13 to 15: Temperature and TState
-        self.garageTemp = pyxbmct.Button(self.garageThermostat.temp, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.garageThermostat.state])
+        self.garageTemp = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.garageThermostat.state])
         self.placeControl(self.garageTemp, 6, 13, rowspan=3, columnspan=3)
-        self.garageState = pyxbmct.Label(strState.format(self.garageThermostat.state), font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
+        self.garageState = pyxbmct.Label(strNV, font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
         self.placeControl(self.garageState, 9, 13, rowspan=1, columnspan=3)
 
         # Columns 17 to 19: Fan, Hold and Target Temperature
-        self.garageTargetLabel = pyxbmct.Button(self.garageThermostat.mode if self.garageThermostat.mode == strCool or self.garageThermostat.mode == strHeat else ' ', textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.garageThermostat.mode])
+        self.garageTargetLabel = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.garageThermostat.mode])
         self.placeControl(self.garageTargetLabel, 6, 17, rowspan=1, columnspan=2)
-
-        self.garageTarget = pyxbmct.Button(self.garageThermostat.target, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.garageThermostat.mode])
+        self.garageTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.garageThermostat.mode])
         self.placeControl(self.garageTarget, 7, 17, rowspan=2, columnspan=2)
 
         self.garageTargetUp = pyxbmct.Button(u'\u25B2', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
@@ -483,18 +473,15 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         self.garageFan = pyxbmct.Button(strPadding + strFan, textOffsetX=0, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
         self.placeControl(self.garageFan, 10, 17, rowspan=2, columnspan=3)
-        self.garageFan.setLabel(label2=self.garageThermostat.fan + strPadding)
 
         self.garageHold = pyxbmct.RadioButton(strPadding + strHold, textOffsetX=0, noFocusTexture=__transparent__)
         self.placeControl(self.garageHold, 12, 17, rowspan=2, columnspan=3)
-        self.garageHold.setSelected(self.garageThermostat.hold == strOn)
 
         # Reload and set buttons in row 16, columns 12 to 14 and 16 to 18
         self.garageReload = pyxbmct.Button(strReload, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.garageReload, 16, 12, rowspan=2, columnspan=3)
         self.garageSet = pyxbmct.Button(strSet, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y) # , textColor=WHITE if self.garagePendingChanges else GREY)
         self.placeControl(self.garageSet, 16, 16, rowspan=2, columnspan=3)
-        self.garageSet.setEnabled(self.garagePendingChanges)
 
         # Close button
         self.buttonClose = pyxbmct.Button(strClose)
@@ -659,6 +646,12 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.houseSet.setEnabled(flag)
 
 
+    def setGaragePendingChanges(self, flag):
+        self.garagePendingChanges = flag
+        #self.garageSet.setLabel(self.garageSet.getLabel(), textColor=WHITE if flag else GREY)
+        self.garageSet.setEnabled(flag)
+
+
     def setHouseFan(self):
         # Calulate position of options menu from currently selected element
         # and open options menu
@@ -676,8 +669,29 @@ class MyAddon(pyxbmct.AddonDialogWindow):
             self.houseFan.setLabel(label2=str(value) + strPadding)
 
 
+    def setGarageFan(self):
+        # Calulate position of options menu from currently selected element
+        # and open options menu
+        dialog = SelectOptions(optionsFan,
+                               self.garageFan.getX(),
+                               self.garageFan.getY() + self.garageFan.getHeight() + 1,
+                               width=self.garageFan.getWidth(),
+                               height=self.garageFan.getHeight(),
+                               returnLabel=True)
+        value = dialog.start()
+        del dialog
+
+        if value:
+            self.setGaragePendingChanges(True)
+            self.garageFan.setLabel(label2=str(value) + strPadding)
+
+
     def setHouseHold(self):
         self.setHousePendingChanges(True)
+
+
+    def setGarageHold(self):
+        self.setGaragePendingChanges(True)
 
 
     def setHouseMode(self, mode):
@@ -692,6 +706,18 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.houseTarget.setLabel(self.houseTarget.getLabel(), textColor=tColor[mode])
 
 
+    def setGarageMode(self, mode):
+        self.setGaragePendingChanges(True)
+
+        self.garageModeOff.setSelected(mode == strOff)
+        self.garageModeHeat.setSelected(mode == strHeat)
+        self.garageModeCool.setSelected(mode == strCool)
+        self.garageModeAuto.setSelected(mode == strAuto)
+
+        self.garageTargetLabel.setLabel(mode if mode == strCool or mode == strHeat else ' ', textColor=tColor[mode])
+        self.garageTarget.setLabel(self.garageTarget.getLabel(), textColor=tColor[mode])
+
+
     def setHouseTargetUp(self):
         current = self.houseTarget.getLabel()
 
@@ -702,6 +728,16 @@ class MyAddon(pyxbmct.AddonDialogWindow):
             self.houseTarget.setLabel(new + strDegreeCelsius)
 
 
+    def setGarageTargetUp(self):
+        current = self.garageTarget.getLabel()
+
+        if current and current != strNV:
+            self.setGaragePendingChanges(True)
+            current = current[:-len(strDegreeCelsius)]
+            new = str(float(current) + 0.5)
+            self.garageTarget.setLabel(new + strDegreeCelsius)
+
+
     def setHouseTargetDn(self):
         current = self.houseTarget.getLabel()
 
@@ -710,6 +746,16 @@ class MyAddon(pyxbmct.AddonDialogWindow):
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) - 0.5)
             self.houseTarget.setLabel(new + strDegreeCelsius)
+
+
+    def setGarageTargetDn(self):
+        current = self.garageTarget.getLabel()
+
+        if current and current != strNV:
+            self.setGaragePendingChanges(True)
+            current = current[:-len(strDegreeCelsius)]
+            new = str(float(current) - 0.5)
+            self.garageTarget.setLabel(new + strDegreeCelsius)
 
 
     def updateHouseValues(self):
@@ -744,92 +790,6 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.getHouseValues(reload=False)
 
 
-    def reloadHouseValues(self):
-        self.setHousePendingChanges(False)
-        self.getHouseValues()
-
-
-    def getHouseValues(self, reload=True):
-        if reload:
-            xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-            self.houseThermostat.read()
-            xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
-
-        self.houseTemp.setLabel(self.houseThermostat.temp, textColor=TColor[self.houseThermostat.state])
-        self.houseState.setLabel(strState.format(self.houseThermostat.state))
-
-        if self.housePendingChanges:
-            return
-
-        self.houseModeOff.setSelected(self.houseThermostat.mode == strOff)
-        self.houseModeHeat.setSelected(self.houseThermostat.mode == strHeat)
-        self.houseModeCool.setSelected(self.houseThermostat.mode == strCool)
-        self.houseModeAuto.setSelected(self.houseThermostat.mode == strAuto)
-        self.houseFan.setLabel(label2=self.houseThermostat.fan + strPadding)
-        self.houseHold.setSelected(self.houseThermostat.hold == strOn)
-        self.houseTargetLabel.setLabel(self.houseThermostat.mode if self.houseThermostat.mode == strCool or self.houseThermostat.mode == strHeat else ' ', textColor=tColor[self.houseThermostat.mode])
-        self.houseTarget.setLabel(self.houseThermostat.target, textColor=tColor[self.houseThermostat.mode])
-
-
-    def setGaragePendingChanges(self, flag):
-        self.garagePendingChanges = flag
-        #self.garageSet.setLabel(self.garageSet.getLabel(), textColor=WHITE if flag else GREY)
-        self.garageSet.setEnabled(flag)
-
-
-    def setGarageFan(self):
-        # Calulate position of options menu from currently selected element
-        # and open options menu
-        dialog = SelectOptions(optionsFan,
-                               self.garageFan.getX(),
-                               self.garageFan.getY() + self.garageFan.getHeight() + 1,
-                               width=self.garageFan.getWidth(),
-                               height=self.garageFan.getHeight(),
-                               returnLabel=True)
-        value = dialog.start()
-        del dialog
-
-        if value:
-            self.setGaragePendingChanges(True)
-            self.garageFan.setLabel(label2=str(value) + strPadding)
-
-
-    def setGarageHold(self):
-        self.setGaragePendingChanges(True)
-
-
-    def setGarageMode(self, mode):
-        self.setGaragePendingChanges(True)
-
-        self.garageModeOff.setSelected(mode == strOff)
-        self.garageModeHeat.setSelected(mode == strHeat)
-        self.garageModeCool.setSelected(mode == strCool)
-        self.garageModeAuto.setSelected(mode == strAuto)
-
-        self.garageTargetLabel.setLabel(mode if mode == strCool or mode == strHeat else ' ', textColor=tColor[mode])
-        self.garageTarget.setLabel(self.garageTarget.getLabel(), textColor=tColor[mode])
-
-
-    def setGarageTargetUp(self):
-        current = self.garageTarget.getLabel()
-
-        if current and current != strNV:
-            self.setGaragePendingChanges(True)
-            current = current[:-len(strDegreeCelsius)]
-            new = str(float(current) + 0.5)
-            self.garageTarget.setLabel(new + strDegreeCelsius)
-
-
-    def setGarageTargetDn(self):
-        current = self.garageTarget.getLabel()
-
-        if current and current != strNV:
-            self.setGaragePendingChanges(True)
-            current = current[:-len(strDegreeCelsius)]
-            new = str(float(current) - 0.5)
-            self.garageTarget.setLabel(new + strDegreeCelsius)
-
-
     def updateGarageValues(self):
         if not self.garagePendingChanges:
             return
@@ -862,9 +822,36 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.getGarageValues(reload=False)
 
 
+    def reloadHouseValues(self):
+        self.setHousePendingChanges(False)
+        self.getHouseValues()
+
+
     def reloadGarageValues(self):
         self.setGaragePendingChanges(False)
         self.getGarageValues()
+
+
+    def getHouseValues(self, reload=True):
+        if reload:
+            xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+            self.houseThermostat.read()
+            xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
+
+        self.houseTemp.setLabel(self.houseThermostat.temp, textColor=TColor[self.houseThermostat.state])
+        self.houseState.setLabel(strState.format(self.houseThermostat.state))
+
+        if self.housePendingChanges:
+            return
+
+        self.houseModeOff.setSelected(self.houseThermostat.mode == strOff)
+        self.houseModeHeat.setSelected(self.houseThermostat.mode == strHeat)
+        self.houseModeCool.setSelected(self.houseThermostat.mode == strCool)
+        self.houseModeAuto.setSelected(self.houseThermostat.mode == strAuto)
+        self.houseFan.setLabel(label2=self.houseThermostat.fan + strPadding)
+        self.houseHold.setSelected(self.houseThermostat.hold == strOn)
+        self.houseTargetLabel.setLabel(self.houseThermostat.mode if self.houseThermostat.mode == strCool or self.houseThermostat.mode == strHeat else ' ', textColor=tColor[self.houseThermostat.mode])
+        self.houseTarget.setLabel(self.houseThermostat.target, textColor=tColor[self.houseThermostat.mode])
 
 
     def getGarageValues(self, reload=True):
@@ -894,6 +881,5 @@ if __name__ == '__main__':
         xbmc.executebuiltin('Addon.OpenSettings(' + __addon_id__ + ')')
 
     myaddon = MyAddon(__addon_name__)
-    #myaddon.doModal()
     myaddon.start(autoRefreshTime)
     del myaddon
