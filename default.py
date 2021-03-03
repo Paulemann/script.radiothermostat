@@ -85,6 +85,8 @@ strReload           = __localize__(35016) # 'Reload'
 strHold             = __localize__(35017) # 'Hold:'
 strDegreeCelsius    = '°C'.decode('utf-8')
 strFahrenheit       = '°F'.decode('utf-8')
+strArrowUp          = u'\u25B2'
+strArrowDn          = u'\u25BC'
 strPadding          = ' '
 
 # Custom Settings
@@ -96,7 +98,7 @@ tempCelsius          = bool(__addon__.getSetting('tempCelsius') == 'true') # Tru
 colorMode            = bool(__addon__.getSetting('colorMode') == 'true') # True
 autoRefreshTime      = int(__addon__.getSetting('refreshTime')) # 30
 
-# Time between thermostat update and read in seconds
+# Time delay between thermostat update and read in seconds
 delayTime            = 2
 
 
@@ -416,9 +418,9 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.houseTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.houseThermostat.mode])
         self.placeControl(self.houseTarget, 7, 7, rowspan=2, columnspan=2)
 
-        self.houseTargetUp = pyxbmct.Button(u'\u25B2', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+        self.houseTargetUp = pyxbmct.Button(strArrowUp, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.houseTargetUp, 6, 9, rowspan=2)
-        self.houseTargetDn = pyxbmct.Button(u'\u25BC', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+        self.houseTargetDn = pyxbmct.Button(strArrowDn, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.houseTargetDn, 8, 9, rowspan=2)
 
         self.houseFan = pyxbmct.Button(strPadding + strFan, textOffsetX=0, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
@@ -466,9 +468,9 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.garageTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.garageThermostat.mode])
         self.placeControl(self.garageTarget, 7, 17, rowspan=2, columnspan=2)
 
-        self.garageTargetUp = pyxbmct.Button(u'\u25B2', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+        self.garageTargetUp = pyxbmct.Button(strArrowUp, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.garageTargetUp, 6, 19, rowspan=2)
-        self.garageTargetDn = pyxbmct.Button(u'\u25BC', textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+        self.garageTargetDn = pyxbmct.Button(strArrowDn, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
         self.placeControl(self.garageTargetDn, 8, 19, rowspan=2)
 
         self.garageFan = pyxbmct.Button(strPadding + strFan, textOffsetX=0, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
@@ -610,14 +612,12 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         while True:
             waitTime = int(refreshTime)
-            waitTime -= 0 if self.houseThermostat.temp == strNV else delayTime
-            waitTime -= 0 if self.garageThermostat.temp == strNV else delayTime
             for i in range(waitTime):
                 if stop():
                     return
                 xbmc.sleep(1000)
-            self.getHouseValues()
-            self.getGarageValues()
+            Thread(target=self.getHouseValues).start()
+            Thread(target=self.getGarageValues).start()
 
 
     def start(self, refreshTime):
