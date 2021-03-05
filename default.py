@@ -89,17 +89,17 @@ strArrowUp          = u'\u25B2'
 strArrowDn          = u'\u25BC'
 
 # Custom Settings
-ipHouseThermostat    = __addon__.getSetting('ipAddress1') or '1.1.1.1'
-nameHouseThermostat  = __addon__.getSetting('name1') or 'Thermostat 1'
-ipGarageThermostat   = __addon__.getSetting('ipAddress2') or '1.1.1.2'
-nameGarageThermostat = __addon__.getSetting('name2') or 'Thermostat 2'
-tempCelsius          = bool(__addon__.getSetting('tempCelsius') == 'true') # True
-colorMode            = bool(__addon__.getSetting('colorMode') == 'true') # True
-autoRefreshTime      = int(__addon__.getSetting('refreshTime')) # 30
+ipThermostat1       = __addon__.getSetting('ipAddress1') or '1.1.1.1'
+nameThermostat1     = __addon__.getSetting('name1') or 'Thermostat 1'
+ipThermostat2       = __addon__.getSetting('ipAddress2') or '1.1.1.2'
+nameThermostat2     = __addon__.getSetting('name2') or 'Thermostat 2'
+tempCelsius         = bool(__addon__.getSetting('tempCelsius') == 'true') # True
+colorMode           = bool(__addon__.getSetting('colorMode') == 'true') # True
+autoRefreshTime     = int(__addon__.getSetting('refreshTime')) # 30
 
 # Time delay between thermostat update and read in seconds
-delayTime            = 2
-doTest               = False
+delayTime           = 2
+doTest              = False
 
 
 # List of dictionaries with label and value for each option
@@ -189,7 +189,7 @@ def LabelToValue(label, optionList):
 # A class is an abstract model of your device or funtion.
 # You can create instances from a class which represent
 # individual devices or functions with specific properties/parameters
-# e.g. houeseThermostat = Thermostat('192.168.1.230', 'House Thermostat')
+# e.g. houseThermostat = Thermostat('192.168.1.230', 'House Thermostat')
 class Thermostat():
 
     def __init__(self, ip, name):
@@ -359,14 +359,18 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
     def __init__(self, title=''):
         """Class constructor"""
+
+        self.control = [{}, {}]
+
+        # Create the thermostats and initalize values
+        self.thermostat = [
+                            Thermostat(ipThermostat1, nameThermostat1),
+                            Thermostat(ipThermostat2, nameThermostat2)
+                          ]
         # Call the base class' constructor.
         super(MyAddon, self).__init__(title)
 
         xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-
-        # Create the thermostats and initalize values
-        self.houseThermostat = Thermostat(ipHouseThermostat, nameHouseThermostat)
-        self.garageThermostat = Thermostat(ipGarageThermostat, nameGarageThermostat)
 
         # Set width, height and the grid parameters: 23 rows, 21 columns
         self.setGeometry(950, 483, 23, 21)
@@ -380,150 +384,92 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         # Connect Backspace button to close our addon.
         self.connect(pyxbmct.ACTION_NAV_BACK, self.close)
 
-        self.setHousePendingChanges(False)
-        self.getHouseValues(reload=False)
+        self.setPendingChanges(self.control[0], False)
+        self.getValues(self.control[0], self.thermostat[0], reload=False)
 
-        self.setGaragePendingChanges(False)
-        self.getGarageValues(reload=False)
+        self.setPendingChanges(self.control[1], False)
+        self.getValues(self.control[1], self.thermostat[1], reload=False)
 
         xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
 
     def setControls(self):
         """Set up UI controls"""
-        # House Controls:
 
-        # Title in row 2, column 1 spanning over all 9 columns
-        title = pyxbmct.Label(self.houseThermostat.name, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y, font=BIG_FONT, textColor=BLUE)
-        self.placeControl(title, 2, 1, rowspan=2, columnspan=9)
+        for i, control in enumerate(self.control):
+            # Title in row 2, column 1 spanning over all 9 columns
+            control['title']       = pyxbmct.Label(self.thermostat[i].name, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y, font=BIG_FONT, textColor=BLUE)
+            control['modeOff']     = pyxbmct.RadioButton(strOff, textOffsetX=3, noFocusTexture=__transparent__)
+            control['modeHeat']    = pyxbmct.RadioButton(strHeat, textOffsetX=3, noFocusTexture=__transparent__)
+            control['modeCool']    = pyxbmct.RadioButton(strCool, textOffsetX=3, noFocusTexture=__transparent__)
+            control['modeAuto']    = pyxbmct.RadioButton(strAuto, textOffsetX=3, noFocusTexture=__transparent__)
+            control['temp']        = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.thermostat[i].state])
+            control['state']       = pyxbmct.Label(strNV, font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
+            control['targetLabel'] = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.thermostat[i].mode])
+            control['target']      = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.thermostat[i].mode])
+            control['targetUp']    = pyxbmct.Button(strArrowUp, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+            control['targetDn']    = pyxbmct.Button(strArrowDn, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
+            control['fan']         = pyxbmct.Button(strFan, textOffsetX=3, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
+            control['hold']        = pyxbmct.RadioButton(strHold, textOffsetX=3, noFocusTexture=__transparent__)
+            control['reload']      = pyxbmct.Button(strReload)
+            control['apply']       = pyxbmct.Button(strSet)
 
-        # Define inividual labels for each value that must be updated
-        # Columns 1 & 2: TMode States
-        self.houseModeOff = pyxbmct.RadioButton(strOff, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.houseModeOff, 6, 1, rowspan=2, columnspan=2)
-        self.houseModeHeat = pyxbmct.RadioButton(strHeat, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.houseModeHeat, 8, 1, rowspan=2, columnspan=2)
-        self.houseModeCool = pyxbmct.RadioButton(strCool, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.houseModeCool, 10, 1, rowspan=2, columnspan=2)
-        self.houseModeAuto = pyxbmct.RadioButton(strAuto, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.houseModeAuto, 12, 1, rowspan=2, columnspan=2)
+            self.placeControl(control['title'], 2, 1 + i * 10, rowspan=2, columnspan=9)
 
-        # Columns 3 to 5: Temperature and TState
-        self.houseTemp = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.houseThermostat.state])
-        self.placeControl(self.houseTemp, 6, 3, rowspan=3, columnspan=3)
-        self.houseState = pyxbmct.Label(strNV, font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
-        self.placeControl(self.houseState, 9, 3, rowspan=1, columnspan=3)
+            # Define inividual labels for each value that must be updated
+            # Columns 1 & 2: TMode States
+            self.placeControl(control['modeOff'], 6, 1 + i * 10, rowspan=2, columnspan=2)
+            self.placeControl(control['modeHeat'], 8, 1 + i * 10, rowspan=2, columnspan=2)
+            self.placeControl(control['modeCool'], 10, 1 + i * 10, rowspan=2, columnspan=2)
+            self.placeControl(control['modeAuto'], 12, 1 + i * 10, rowspan=2, columnspan=2)
 
-        # Columns 7 to 9: Fan, Hold and Target Temperature
-        self.houseTargetLabel = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.houseThermostat.mode])
-        self.placeControl(self.houseTargetLabel, 6, 7, rowspan=1, columnspan=2)
-        self.houseTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.houseThermostat.mode])
-        self.placeControl(self.houseTarget, 7, 7, rowspan=2, columnspan=2)
+            # Columns 3 to 5: Temperature and TState
+            self.placeControl(control['temp'], 6, 3 + i * 10, rowspan=3, columnspan=3)
+            self.placeControl(control['state'], 9, 3 + i * 10, rowspan=1, columnspan=3)
 
-        self.houseTargetUp = pyxbmct.Button(strArrowUp, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
-        self.placeControl(self.houseTargetUp, 6, 9, rowspan=2)
-        self.houseTargetDn = pyxbmct.Button(strArrowDn, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
-        self.placeControl(self.houseTargetDn, 8, 9, rowspan=2)
+            # Columns 7 to 9: Fan, Hold and Target Temperature
+            self.placeControl(control['targetLabel'], 6, 7 + i * 10, rowspan=1, columnspan=2)
+            self.placeControl(control['target'], 7, 7 + i * 10, rowspan=2, columnspan=2)
+            self.placeControl(control['targetUp'], 6, 9 + i * 10, rowspan=2)
+            self.placeControl(control['targetDn'], 8, 9 + i * 10, rowspan=2)
 
-        self.houseFan = pyxbmct.Button(strFan, textOffsetX=3, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
-        self.placeControl(self.houseFan, 10, 7, rowspan=2, columnspan=3)
+            self.placeControl(control['fan'], 10, 7 + i * 10, rowspan=2, columnspan=3)
+            self.placeControl(control['hold'], 12, 7 + i * 10, rowspan=2, columnspan=3)
 
-        self.houseHold = pyxbmct.RadioButton(strHold, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.houseHold, 12, 7, rowspan=2, columnspan=3)
+            # Reload and set buttons in row 16, columns 2 to 4 and 6 to 8
+            self.placeControl(control['reload'], 16, 2 + i * 10, rowspan=2, columnspan=3)
+            self.placeControl(control['apply'], 16, 6 + i * 10, rowspan=2, columnspan=3)
 
-        # Reload and set buttons in row 16, columns 2 to 4 and 6 to 8
-        self.houseReload = pyxbmct.Button(strReload)
-        self.placeControl(self.houseReload, 16, 2, rowspan=2, columnspan=3)
-        self.houseSet = pyxbmct.Button(strSet) # , textColor=WHITE if self.housePendingChanges else GREY)
-        self.placeControl(self.houseSet, 16, 6, rowspan=2, columnspan=3)
+        # Connect the buttons (arguments must be known at runtime, hence cannot be set in a loop with variable)
+        self.connect(self.control[0]['fan'], lambda: self.setFan(self.control[0]))
+        self.connect(self.control[0]['hold'], lambda: self.setHold(self.control[0]))
+        self.connect(self.control[0]['modeOff'], lambda: self.setMode(self.control[0], strOff))
+        self.connect(self.control[0]['modeHeat'], lambda: self.setMode(self.control[0], strHeat))
+        self.connect(self.control[0]['modeCool'], lambda: self.setMode(self.control[0], strCool))
+        self.connect(self.control[0]['modeAuto'], lambda: self.setMode(self.control[0], strAuto))
+        self.connect(self.control[0]['targetUp'], lambda: self.setTargetUp(self.control[0]))
+        self.connect(self.control[0]['targetDn'], lambda: self.setTargetDn(self.control[0]))
+        self.connect(self.control[0]['reload'], lambda: self.reloadValues(self.control[0], self.thermostat[0]))
+        self.connect(self.control[0]['apply'], lambda: self.applyValues(self.control[0], self.thermostat[0]))
+
+        self.connect(self.control[1]['fan'], lambda: self.setFan(self.control[1]))
+        self.connect(self.control[1]['hold'], lambda: self.setHold(self.control[1]))
+        self.connect(self.control[1]['modeOff'], lambda: self.setMode(self.control[1], strOff))
+        self.connect(self.control[1]['modeHeat'], lambda: self.setMode(self.control[1], strHeat))
+        self.connect(self.control[1]['modeCool'], lambda: self.setMode(self.control[1], strCool))
+        self.connect(self.control[1]['modeAuto'], lambda: self.setMode(self.control[1], strAuto))
+        self.connect(self.control[1]['targetUp'], lambda: self.setTargetUp(self.control[1]))
+        self.connect(self.control[1]['targetDn'], lambda: self.setTargetDn(self.control[1]))
+        self.connect(self.control[1]['reload'], lambda: self.reloadValues(self.control[1], self.thermostat[1]))
+        self.connect(self.control[1]['apply'], lambda: self.applyValues(self.control[1], self.thermostat[1]))
 
         # Vertical Line
         vLine =pyxbmct.Image(__verticalLine__, aspectRatio=1)
         self.placeControl(vLine, 5, 10, rowspan=13)
 
-        # Garage controls:
-
-        # Title in row 2, column 1 spanning over all 9 columns
-        title = pyxbmct.Label(self.garageThermostat.name, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y, font=BIG_FONT, textColor=BLUE)
-        self.placeControl(title, 2, 11, rowspan=2, columnspan=9)
-
-        # Define inividual labels for each value that must be updated
-        # Columns 11 & 12: TMode States
-        self.garageModeOff = pyxbmct.RadioButton(strOff, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.garageModeOff, 6, 11, rowspan=2, columnspan=2)
-        self.garageModeHeat = pyxbmct.RadioButton(strHeat, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.garageModeHeat, 8, 11, rowspan=2, columnspan=2)
-        self.garageModeCool = pyxbmct.RadioButton(strCool, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.garageModeCool, 10, 11, rowspan=2, columnspan=2)
-        self.garageModeAuto = pyxbmct.RadioButton(strAuto, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.garageModeAuto, 12, 11, rowspan=2, columnspan=2)
-
-        # Columns 13 to 15: Temperature and TState
-        self.garageTemp = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, font=LARGE_FONT, textColor=TColor[self.garageThermostat.state])
-        self.placeControl(self.garageTemp, 6, 13, rowspan=3, columnspan=3)
-        self.garageState = pyxbmct.Label(strNV, font=SMALL_FONT, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y)
-        self.placeControl(self.garageState, 9, 13, rowspan=1, columnspan=3)
-
-        # Columns 17 to 19: Fan, Hold and Target Temperature
-        self.garageTargetLabel = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_LEFT|ALIGN_CENTER_Y, font=SMALL_FONT, textColor=tColor[self.garageThermostat.mode])
-        self.placeControl(self.garageTargetLabel, 6, 17, rowspan=1, columnspan=2)
-        self.garageTarget = pyxbmct.Button(strNV, textOffsetX=0, noFocusTexture=__transparent__, alignment=ALIGN_RIGHT|ALIGN_CENTER_Y, textColor=tColor[self.garageThermostat.mode])
-        self.placeControl(self.garageTarget, 7, 17, rowspan=2, columnspan=2)
-
-        self.garageTargetUp = pyxbmct.Button(strArrowUp, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
-        self.placeControl(self.garageTargetUp, 6, 19, rowspan=2)
-        self.garageTargetDn = pyxbmct.Button(strArrowDn, textOffsetX=0, alignment=ALIGN_CENTER_X|ALIGN_CENTER_Y)
-        self.placeControl(self.garageTargetDn, 8, 19, rowspan=2)
-
-        self.garageFan = pyxbmct.Button(strFan, textOffsetX=3, alignment=ALIGN_LEFT|ALIGN_CENTER_Y)
-        self.placeControl(self.garageFan, 10, 17, rowspan=2, columnspan=3)
-
-        self.garageHold = pyxbmct.RadioButton(strHold, textOffsetX=3, noFocusTexture=__transparent__)
-        self.placeControl(self.garageHold, 12, 17, rowspan=2, columnspan=3)
-
-        # Reload and set buttons in row 16, columns 12 to 14 and 16 to 18
-        self.garageReload = pyxbmct.Button(strReload)
-        self.placeControl(self.garageReload, 16, 12, rowspan=2, columnspan=3)
-        self.garageSet = pyxbmct.Button(strSet) # , textColor=WHITE if self.garagePendingChanges else GREY)
-        self.placeControl(self.garageSet, 16, 16, rowspan=2, columnspan=3)
-
         # Close button
         self.buttonClose = pyxbmct.Button(strClose)
         self.placeControl(self.buttonClose, 20, 9, rowspan=2, columnspan=3)
-
-        # Connect the fan buttons
-        self.connect(self.houseFan, self.setHouseFan)
-        self.connect(self.garageFan, self.setGarageFan)
-
-        # Connect the hold buttons
-        self.connect(self.houseHold, self.setHouseHold)
-        self.connect(self.garageHold, self.setGarageHold)
-
-        # Connect the mode buttons
-        self.connect(self.houseModeOff, lambda: self.setHouseMode(strOff))
-        self.connect(self.houseModeHeat, lambda: self.setHouseMode(strHeat))
-        self.connect(self.houseModeCool, lambda: self.setHouseMode(strCool))
-        self.connect(self.houseModeAuto, lambda: self.setHouseMode(strAuto))
-        self.connect(self.garageModeOff, lambda: self.setGarageMode(strOff))
-        self.connect(self.garageModeHeat, lambda: self.setGarageMode(strHeat))
-        self.connect(self.garageModeCool, lambda: self.setGarageMode(strCool))
-        self.connect(self.garageModeAuto, lambda: self.setGarageMode(strAuto))
-
-        # Connect the up buttons
-        self.connect(self.houseTargetUp, self.setHouseTargetUp)
-        self.connect(self.garageTargetUp, self.setGarageTargetUp)
-
-        # Connect the down buttons
-        self.connect(self.houseTargetDn, self.setHouseTargetDn)
-        self.connect(self.garageTargetDn, self.setGarageTargetDn)
-
-        # Connect the reload buttons
-        self.connect(self.houseReload, self.reloadHouseValues)
-        self.connect(self.garageReload, self.reloadGarageValues)
-
-        # Connect the set buttons
-        self.connect(self.houseSet, self.updateHouseValues)
-        self.connect(self.garageSet, self.updateGarageValues)
 
         # Connect the close button
         self.connect(self.buttonClose, self.stop)
@@ -532,79 +478,57 @@ class MyAddon(pyxbmct.AddonDialogWindow):
     def setNavigation(self):
         """Set up keyboard/remote navigation between controls."""
 
-        self.houseModeOff.controlDown(self.houseModeHeat)
-        self.houseModeOff.controlRight(self.houseTargetUp)
-        self.houseModeHeat.controlUp(self.houseModeOff)
-        self.houseModeHeat.controlDown(self.houseModeCool)
-        self.houseModeHeat.controlRight(self.houseTargetDn)
-        self.houseModeCool.controlUp(self.houseModeHeat)
-        self.houseModeCool.controlDown(self.houseModeAuto)
-        self.houseModeCool.controlRight(self.houseFan)
-        self.houseModeAuto.controlUp(self.houseModeCool)
-        self.houseModeAuto.controlDown(self.houseReload)
-        self.houseModeAuto.controlRight(self.houseHold)
+        for i in range(2):
+            self.control[i]['modeOff'].controlDown(self.control[i]['modeHeat'])
+            self.control[i]['modeOff'].controlRight(self.control[i]['targetUp'])
+            self.control[i]['modeHeat'].controlUp(self.control[i]['modeOff'])
+            self.control[i]['modeHeat'].controlDown(self.control[i]['modeCool'])
+            self.control[i]['modeHeat'].controlRight(self.control[i]['targetDn'])
+            self.control[i]['modeCool'].controlUp(self.control[i]['modeHeat'])
+            self.control[i]['modeCool'].controlDown(self.control[i]['modeAuto'])
+            self.control[i]['modeCool'].controlRight(self.control[i]['fan'])
+            self.control[i]['modeAuto'].controlUp(self.control[i]['modeCool'])
+            self.control[i]['modeAuto'].controlDown(self.control[i]['reload'])
+            self.control[i]['modeAuto'].controlRight(self.control[i]['hold'])
 
-        self.garageModeOff.controlDown(self.garageModeHeat)
-        self.garageModeOff.controlRight(self.garageFan)
-        self.garageModeOff.controlLeft(self.houseTargetUp)
-        self.garageModeHeat.controlUp(self.garageModeOff)
-        self.garageModeHeat.controlDown(self.garageModeCool)
-        self.garageModeHeat.controlRight(self.garageTargetDn)
-        self.garageModeHeat.controlLeft(self.houseTargetDn)
-        self.garageModeCool.controlUp(self.garageModeHeat)
-        self.garageModeCool.controlDown(self.garageModeAuto)
-        self.garageModeCool.controlRight(self.garageFan)
-        self.garageModeCool.controlLeft(self.houseFan)
-        self.garageModeAuto.controlUp(self.garageModeCool)
-        self.garageModeAuto.controlDown(self.garageReload)
-        self.garageModeAuto.controlRight(self.garageHold)
-        self.garageModeAuto.controlLeft(self.houseHold)
+            self.control[i]['fan'].controlUp(self.control[i]['targetDn'])
+            self.control[i]['fan'].controlLeft(self.control[i]['modeCool'])
+            self.control[i]['fan'].controlDown(self.control[i]['hold'])
 
-        self.houseFan.controlUp(self.houseTargetDn)
-        self.houseFan.controlLeft(self.houseModeCool)
-        self.houseFan.controlRight(self.garageModeCool)
-        self.houseFan.controlDown(self.houseHold)
-        self.garageFan.controlUp(self.garageTargetDn)
-        self.garageFan.controlLeft(self.garageModeCool)
-        self.garageFan.controlDown(self.garageHold)
+            self.control[i]['hold'].controlLeft(self.control[i]['modeAuto'])
+            self.control[i]['hold'].controlUp(self.control[i]['fan'])
+            self.control[i]['hold'].controlDown(self.control[i]['apply'])
 
-        self.houseHold.controlLeft(self.houseModeAuto)
-        self.houseHold.controlRight(self.garageModeAuto)
-        self.houseHold.controlUp(self.houseFan)
-        self.houseHold.controlDown(self.houseSet)
-        self.garageHold.controlLeft(self.garageModeAuto)
-        self.garageHold.controlUp(self.garageFan)
-        self.garageHold.controlDown(self.garageSet)
+            self.control[i]['targetUp'].controlDown(self.control[i]['targetDn'])
+            self.control[i]['targetUp'].controlLeft(self.control[i]['modeOff'])
+            self.control[i]['targetDn'].controlUp(self.control[i]['targetUp'])
+            self.control[i]['targetDn'].controlDown(self.control[i]['fan'])
+            self.control[i]['targetDn'].controlLeft(self.control[i]['modeHeat'])
 
-        self.houseTargetUp.controlDown(self.houseTargetDn)
-        self.houseTargetUp.controlLeft(self.houseModeOff)
-        self.houseTargetUp.controlRight(self.garageModeOff)
-        self.houseTargetDn.controlUp(self.houseTargetUp)
-        self.houseTargetDn.controlDown(self.houseFan)
-        self.houseTargetDn.controlLeft(self.houseModeHeat)
-        self.houseTargetDn.controlRight(self.garageModeHeat)
-        self.garageTargetUp.controlDown(self.garageTargetDn)
-        self.garageTargetUp.controlLeft(self.garageModeOff)
-        self.garageTargetDn.controlUp(self.garageTargetUp)
-        self.garageTargetDn.controlDown(self.garageFan)
-        self.garageTargetDn.controlLeft(self.garageModeHeat)
+            self.control[i]['reload'].controlUp(self.control[i]['modeAuto'])
+            self.control[i]['reload'].controlRight(self.control[i]['apply'])
+            self.control[i]['reload'].controlDown(self.buttonClose)
 
-        self.houseReload.controlUp(self.houseModeAuto)
-        self.houseReload.controlRight(self.houseSet)
-        self.houseReload.controlDown(self.buttonClose)
-        self.houseSet.controlUp(self.houseHold)
-        self.houseSet.controlLeft(self.houseReload)
-        self.houseSet.controlRight(self.garageReload)
-        self.houseSet.controlDown(self.buttonClose)
-        self.garageReload.controlUp(self.garageModeAuto)
-        self.garageReload.controlLeft(self.houseSet)
-        self.garageReload.controlRight(self.garageSet)
-        self.garageReload.controlDown(self.buttonClose)
-        self.garageSet.controlUp(self.garageHold)
-        self.garageSet.controlLeft(self.garageReload)
-        self.garageSet.controlDown(self.buttonClose)
+            self.control[i]['apply'].controlUp(self.control[i]['hold'])
+            self.control[i]['apply'].controlLeft(self.control[i]['reload'])
+            self.control[i]['apply'].controlDown(self.buttonClose)
 
-        self.buttonClose.controlUp(self.houseSet)
+            if i == 1:
+                self.control[i]['modeOff'].controlLeft(self.control[i - 1]['targetUp'])
+                self.control[i]['modeHeat'].controlLeft(self.control[i - 1]['targetDn'])
+                self.control[i]['modeCool'].controlLeft(self.control[i - 1]['fan'])
+                self.control[i]['modeAuto'].controlLeft(self.control[i - 1]['hold'])
+
+                self.control[i]['reload'].controlLeft(self.control[i - 1]['apply'])
+
+                self.control[i - 1]['fan'].controlRight(self.control[i]['modeCool'])
+                self.control[i - 1]['hold'].controlRight(self.control[i]['modeAuto'])
+
+                self.control[i - 1]['targetDn'].controlRight(self.control[i]['modeHeat'])
+                self.control[i - 1]['targetUp'].controlRight(self.control[i]['modeOff'])
+                self.control[i - 1]['apply'].controlRight(self.control[i]['reload'])
+
+        self.buttonClose.controlUp(self.control[1]['reload'])
 
         # Set initial focus
         self.setFocus(self.buttonClose)
@@ -618,8 +542,8 @@ class MyAddon(pyxbmct.AddonDialogWindow):
                 if stop():
                     return
                 xbmc.sleep(1000)
-            Thread(target=self.getHouseValues).start()
-            Thread(target=self.getGarageValues).start()
+            Thread(target=self.getValues, args=(self.control[0], self.thermostat[0])).start()
+            Thread(target=self.getValues, args=(self.control[1], self.thermostat[1])).start()
 
 
     def start(self, refreshTime):
@@ -642,240 +566,122 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.close()
 
 
-    def setHousePendingChanges(self, flag):
-        self.housePendingChanges = flag
-        #self.houseSet.setLabel(self.houseSet.getLabel(), textColor=WHITE if flag else GREY)
-        self.houseSet.setEnabled(flag)
+    def setPendingChanges(self, control, flag):
+        control['pendingChanges'] = flag
+        #control['apply'].setLabel(control['apply'].getLabel(), textColor=WHITE if flag else GREY)
+        control['apply'].setEnabled(flag)
 
 
-    def setGaragePendingChanges(self, flag):
-        self.garagePendingChanges = flag
-        #self.garageSet.setLabel(self.garageSet.getLabel(), textColor=WHITE if flag else GREY)
-        self.garageSet.setEnabled(flag)
-
-
-    def setHouseFan(self):
+    def setFan(self, control):
         # Calulate position of options menu from currently selected element
         # and open options menu
         dialog = SelectOptions(optionsFan,
-                               self.houseFan.getX(),
-                               self.houseFan.getY() + self.houseFan.getHeight() + 1,
-                               width=self.houseFan.getWidth(),
-                               height=self.houseFan.getHeight(),
+                               control['fan'].getX(),
+                               control['fan'].getY() + self.control[0]['fan'].getHeight() + 1,
+                               width=control['fan'].getWidth(),
+                               height=control['fan'].getHeight(),
                                returnLabel=True)
         value = dialog.start()
         del dialog
 
         if value:
-            self.setHousePendingChanges(True)
-            self.houseFan.setLabel(label2=str(value))
+            self.setPendingChanges(control, True)
+            control['fan'].setLabel(label2=str(value))
 
 
-    def setGarageFan(self):
-        # Calulate position of options menu from currently selected element
-        # and open options menu
-        dialog = SelectOptions(optionsFan,
-                               self.garageFan.getX(),
-                               self.garageFan.getY() + self.garageFan.getHeight() + 1,
-                               width=self.garageFan.getWidth(),
-                               height=self.garageFan.getHeight(),
-                               returnLabel=True)
-        value = dialog.start()
-        del dialog
-
-        if value:
-            self.setGaragePendingChanges(True)
-            self.garageFan.setLabel(label2=str(value))
+    def setHold(self, control):
+        self.setPendingChanges(control, True)
 
 
-    def setHouseHold(self):
-        self.setHousePendingChanges(True)
+    def setMode(self, control, mode):
+        self.setPendingChanges(control, True)
+
+        control['modeOff'].setSelected(mode == strOff)
+        control['modeHeat'].setSelected(mode == strHeat)
+        control['modeCool'].setSelected(mode == strCool)
+        control['modeAuto'].setSelected(mode == strAuto)
+
+        control['targetLabel'].setLabel(mode if mode == strCool or mode == strHeat else ' ', textColor=tColor[mode])
+        control['target'].setLabel(control['target'].getLabel(), textColor=tColor[mode])
 
 
-    def setGarageHold(self):
-        self.setGaragePendingChanges(True)
-
-
-    def setHouseMode(self, mode):
-        self.setHousePendingChanges(True)
-
-        self.houseModeOff.setSelected(mode == strOff)
-        self.houseModeHeat.setSelected(mode == strHeat)
-        self.houseModeCool.setSelected(mode == strCool)
-        self.houseModeAuto.setSelected(mode == strAuto)
-
-        self.houseTargetLabel.setLabel(mode if mode == strCool or mode == strHeat else ' ', textColor=tColor[mode])
-        self.houseTarget.setLabel(self.houseTarget.getLabel(), textColor=tColor[mode])
-
-
-    def setGarageMode(self, mode):
-        self.setGaragePendingChanges(True)
-
-        self.garageModeOff.setSelected(mode == strOff)
-        self.garageModeHeat.setSelected(mode == strHeat)
-        self.garageModeCool.setSelected(mode == strCool)
-        self.garageModeAuto.setSelected(mode == strAuto)
-
-        self.garageTargetLabel.setLabel(mode if mode == strCool or mode == strHeat else ' ', textColor=tColor[mode])
-        self.garageTarget.setLabel(self.garageTarget.getLabel(), textColor=tColor[mode])
-
-
-    def setHouseTargetUp(self):
-        current = self.houseTarget.getLabel()
+    def setTargetUp(self, control):
+        current = control['target'].getLabel()
 
         if current and current != strNV:
-            self.setHousePendingChanges(True)
+            self.setPendingChanges(control, True)
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) + 0.5)
-            self.houseTarget.setLabel(new + strDegreeCelsius)
+            control['target'].setLabel(new + strDegreeCelsius)
 
 
-    def setGarageTargetUp(self):
-        current = self.garageTarget.getLabel()
-
-        if current and current != strNV:
-            self.setGaragePendingChanges(True)
-            current = current[:-len(strDegreeCelsius)]
-            new = str(float(current) + 0.5)
-            self.garageTarget.setLabel(new + strDegreeCelsius)
-
-
-    def setHouseTargetDn(self):
-        current = self.houseTarget.getLabel()
+    def setTargetDn(self, control):
+        current = control['target'].getLabel()
 
         if current and current != strNV:
-            self.setHousePendingChanges(True)
+            self.setPendingChanges(control, True)
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) - 0.5)
-            self.houseTarget.setLabel(new + strDegreeCelsius)
+            control['target'].setLabel(new + strDegreeCelsius)
 
 
-    def setGarageTargetDn(self):
-        current = self.garageTarget.getLabel()
-
-        if current and current != strNV:
-            self.setGaragePendingChanges(True)
-            current = current[:-len(strDegreeCelsius)]
-            new = str(float(current) - 0.5)
-            self.garageTarget.setLabel(new + strDegreeCelsius)
-
-
-    def updateHouseValues(self):
-        if not self.housePendingChanges:
+    def applyValues(self, control, thermostat):
+        if not control['pendingChanges']:
             return
 
-        updateFan = self.houseFan.getLabel2().strip()
+        updateFan = control['fan'].getLabel2().strip()
         if updateFan == strNV:
             updateFan = None
 
-        updateHold = strOn if self.houseHold.isSelected() else strOff
+        updateHold = strOn if control['hold'].isSelected() else strOff
 
         updateMode = None
-        if self.houseModeOff.isSelected():
+        if control['modeOff'].isSelected():
             updateMode = strOff
-        elif self.houseModeHeat.isSelected():
+        elif control['modeHeat'].isSelected():
             updateMode = strHeat
-        elif self.houseModeCool.isSelected():
+        elif control['modeCool'].isSelected():
             updateMode = strCool
-        elif self.houseModeAuto.isSelected():
+        elif control['modeAuto'].isSelected():
             updateMode = strAuto
 
-        updateTarget = self.houseTarget.getLabel()
+        updateTarget = control['target'].getLabel()
         if updateTarget == strNV:
             updateTarget = None
 
         xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-        success = self.houseThermostat.update(fan=updateFan, mode=updateMode, hold=updateHold, target=updateTarget)
-        self.setHousePendingChanges(False) # self.setHousePendingChanges(not success)
+        success = thermostat.update(fan=updateFan, mode=updateMode, hold=updateHold, target=updateTarget)
+        self.setPendingChanges(control, False) # self.setPendingChanges(control, not success)
         xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
-        self.getHouseValues(reload=False)
+        self.getValues(control, thermostat, reload=False)
 
 
-    def updateGarageValues(self):
-        if not self.garagePendingChanges:
-            return
-
-        updateFan = self.garageFan.getLabel2().strip()
-        if updateFan == strNV:
-            updateFan = None
-
-        updateHold = strOn if self.garageHold.isSelected() else strOff
-
-        updateMode = None
-        if self.garageModeOff.isSelected():
-            updateMode = strOff
-        elif self.garageModeHeat.isSelected():
-            updateMode = strHeat
-        elif self.garageModeCool.isSelected():
-            updateMode = strCool
-        elif self.garageModeAuto.isSelected():
-            updateMode = strAuto
-
-        updateTarget = self.garageTarget.getLabel()
-        if updateTarget == strNV:
-            updateTarget = None
-
-        xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-        success = self.garageThermostat.update(fan=updateFan, mode=updateMode, hold=updateHold, target=updateTarget)
-        self.setGaragePendingChanges(False) # self.setGaragePendingChanges(not success)
-        xbmc.executebuiltin('Dialog.CLose(busydialognocancel)')
-
-        self.getGarageValues(reload=False)
+    def reloadValues(self, control, thermostat):
+        self.setPendingChanges(control, False)
+        self.getValues(control, thermostat)
 
 
-    def reloadHouseValues(self):
-        self.setHousePendingChanges(False)
-        self.getHouseValues()
-
-
-    def reloadGarageValues(self):
-        self.setGaragePendingChanges(False)
-        self.getGarageValues()
-
-
-    def getHouseValues(self, reload=True):
+    def getValues(self, control, thermostat, reload=True):
         if reload:
             xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-            self.houseThermostat.read()
+            thermostat.read()
             xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
-        self.houseTemp.setLabel(self.houseThermostat.temp, textColor=TColor[self.houseThermostat.state])
-        self.houseState.setLabel(strState.format(self.houseThermostat.state))
+        control['temp'].setLabel(thermostat.temp, textColor=TColor[thermostat.state])
+        control['state'].setLabel(strState.format(thermostat.state))
 
-        if self.housePendingChanges:
+        if control['pendingChanges']:
             return
 
-        self.houseModeOff.setSelected(self.houseThermostat.mode == strOff)
-        self.houseModeHeat.setSelected(self.houseThermostat.mode == strHeat)
-        self.houseModeCool.setSelected(self.houseThermostat.mode == strCool)
-        self.houseModeAuto.setSelected(self.houseThermostat.mode == strAuto)
-        self.houseFan.setLabel(label2=self.houseThermostat.fan)
-        self.houseHold.setSelected(self.houseThermostat.hold == strOn)
-        self.houseTargetLabel.setLabel(self.houseThermostat.mode if self.houseThermostat.mode == strCool or self.houseThermostat.mode == strHeat else ' ', textColor=tColor[self.houseThermostat.mode])
-        self.houseTarget.setLabel(self.houseThermostat.target, textColor=tColor[self.houseThermostat.mode])
-
-
-    def getGarageValues(self, reload=True):
-        if reload:
-            xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
-            self.garageThermostat.read()
-            xbmc.executebuiltin('Dialog.CLose(busydialognocancel)')
-
-        self.garageTemp.setLabel(self.garageThermostat.temp, textColor=TColor[self.garageThermostat.state])
-        self.garageState.setLabel(strState.format(self.garageThermostat.state))
-
-        if self.garagePendingChanges:
-            return
-
-        self.garageModeOff.setSelected(self.garageThermostat.mode == strOff)
-        self.garageModeHeat.setSelected(self.garageThermostat.mode == strHeat)
-        self.garageModeCool.setSelected(self.garageThermostat.mode == strCool)
-        self.garageModeAuto.setSelected(self.garageThermostat.mode == strAuto)
-        self.garageFan.setLabel(label2=self.garageThermostat.fan)
-        self.garageHold.setSelected(self.garageThermostat.hold == strOn)
-        self.garageTargetLabel.setLabel(self.garageThermostat.mode if self.garageThermostat.mode == strCool or self.garageThermostat.mode == strHeat else ' ', textColor=tColor[self.garageThermostat.mode])
-        self.garageTarget.setLabel(self.garageThermostat.target, textColor=tColor[self.houseThermostat.mode])
+        control['modeOff'].setSelected(thermostat.mode == strOff)
+        control['modeHeat'].setSelected(thermostat.mode == strHeat)
+        control['modeCool'].setSelected(thermostat.mode == strCool)
+        control['modeAuto'].setSelected(thermostat.mode == strAuto)
+        control['fan'].setLabel(label2=thermostat.fan)
+        control['hold'].setSelected(thermostat.hold == strOn)
+        control['targetLabel'].setLabel(thermostat.mode if thermostat.mode == strCool or thermostat.mode == strHeat else ' ', textColor=tColor[thermostat.mode])
+        control['target'].setLabel(thermostat.target, textColor=tColor[thermostat.mode])
 
 
 if __name__ == '__main__':
