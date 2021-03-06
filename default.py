@@ -99,7 +99,7 @@ autoRefreshTime     = int(__addon__.getSetting('refreshTime')) # 30
 
 # Time delay between thermostat update and read in seconds
 delayTime           = 2
-doTest              = False
+doTest              = True
 
 
 # List of dictionaries with label and value for each option
@@ -364,9 +364,10 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         # Create the thermostats and initalize values
         self.thermostat = [
-                            Thermostat(ipThermostat1, nameThermostat1),
-                            Thermostat(ipThermostat2, nameThermostat2)
+                           Thermostat(ipThermostat1, nameThermostat1),
+                           Thermostat(ipThermostat2, nameThermostat2)
                           ]
+
         # Call the base class' constructor.
         super(MyAddon, self).__init__(title)
 
@@ -384,11 +385,9 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         # Connect Backspace button to close our addon.
         self.connect(pyxbmct.ACTION_NAV_BACK, self.close)
 
-        self.setPendingChanges(self.control[0], False)
-        self.getValues(self.control[0], self.thermostat[0], reload=False)
-
-        self.setPendingChanges(self.control[1], False)
-        self.getValues(self.control[1], self.thermostat[1], reload=False)
+        for i in range(2):
+            self.setPendingChanges(i, False)
+            self.getValues(i, reload=False)
 
         xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
@@ -440,28 +439,17 @@ class MyAddon(pyxbmct.AddonDialogWindow):
             self.placeControl(control['reload'], 16, 2 + i * 10, rowspan=2, columnspan=3)
             self.placeControl(control['apply'], 16, 6 + i * 10, rowspan=2, columnspan=3)
 
-        # Connect the buttons (arguments must be known at runtime, hence cannot be set in a loop with variable)
-        self.connect(self.control[0]['fan'], lambda: self.setFan(self.control[0]))
-        self.connect(self.control[0]['hold'], lambda: self.setHold(self.control[0]))
-        self.connect(self.control[0]['modeOff'], lambda: self.setMode(self.control[0], strOff))
-        self.connect(self.control[0]['modeHeat'], lambda: self.setMode(self.control[0], strHeat))
-        self.connect(self.control[0]['modeCool'], lambda: self.setMode(self.control[0], strCool))
-        self.connect(self.control[0]['modeAuto'], lambda: self.setMode(self.control[0], strAuto))
-        self.connect(self.control[0]['targetUp'], lambda: self.setTargetUp(self.control[0]))
-        self.connect(self.control[0]['targetDn'], lambda: self.setTargetDn(self.control[0]))
-        self.connect(self.control[0]['reload'], lambda: self.reloadValues(self.control[0], self.thermostat[0]))
-        self.connect(self.control[0]['apply'], lambda: self.applyValues(self.control[0], self.thermostat[0]))
-
-        self.connect(self.control[1]['fan'], lambda: self.setFan(self.control[1]))
-        self.connect(self.control[1]['hold'], lambda: self.setHold(self.control[1]))
-        self.connect(self.control[1]['modeOff'], lambda: self.setMode(self.control[1], strOff))
-        self.connect(self.control[1]['modeHeat'], lambda: self.setMode(self.control[1], strHeat))
-        self.connect(self.control[1]['modeCool'], lambda: self.setMode(self.control[1], strCool))
-        self.connect(self.control[1]['modeAuto'], lambda: self.setMode(self.control[1], strAuto))
-        self.connect(self.control[1]['targetUp'], lambda: self.setTargetUp(self.control[1]))
-        self.connect(self.control[1]['targetDn'], lambda: self.setTargetDn(self.control[1]))
-        self.connect(self.control[1]['reload'], lambda: self.reloadValues(self.control[1], self.thermostat[1]))
-        self.connect(self.control[1]['apply'], lambda: self.applyValues(self.control[1], self.thermostat[1]))
+            # Connect the buttons
+            self.connect(control['fan'], (lambda: self.setFan(0)) if i == 0 else (lambda: self.setFan(1)))
+            self.connect(control['hold'], (lambda: self.setHold(0)) if i == 0 else (lambda: self.setHold(1)))
+            self.connect(control['modeOff'], (lambda: self.setMode(0, strOff)) if i == 0 else (lambda: self.setMode(1, strOff)))
+            self.connect(control['modeHeat'], (lambda: self.setMode(0, strHeat)) if i == 0 else (lambda: self.setMode(1, strHeat)))
+            self.connect(control['modeCool'], (lambda: self.setMode(0, strCool)) if i == 0 else (lambda: self.setMode(1, strCool)))
+            self.connect(control['modeAuto'], (lambda: self.setMode(0, strAuto)) if i == 0 else (lambda: self.setMode(1, strAuto)))
+            self.connect(control['targetUp'], (lambda: self.setTargetUp(0)) if i == 0 else (lambda: self.setTargetUp(1)))
+            self.connect(control['targetDn'], (lambda: self.setTargetDn(0)) if i == 0 else (lambda: self.setTargetDn(1)))
+            self.connect(control['reload'], (lambda: self.reloadValues(0)) if i == 0 else (lambda: self.reloadValues(1)))
+            self.connect(control['apply'], (lambda: self.applyValues(0)) if i == 0 else (lambda: self.applyValues(1)))
 
         # Vertical Line
         vLine =pyxbmct.Image(__verticalLine__, aspectRatio=1)
@@ -518,32 +506,29 @@ class MyAddon(pyxbmct.AddonDialogWindow):
                 self.control[i]['modeHeat'].controlLeft(self.control[i - 1]['targetDn'])
                 self.control[i]['modeCool'].controlLeft(self.control[i - 1]['fan'])
                 self.control[i]['modeAuto'].controlLeft(self.control[i - 1]['hold'])
-
                 self.control[i]['reload'].controlLeft(self.control[i - 1]['apply'])
 
+                self.control[i - 1]['targetUp'].controlRight(self.control[i]['modeOff'])
+                self.control[i - 1]['targetDn'].controlRight(self.control[i]['modeHeat'])
                 self.control[i - 1]['fan'].controlRight(self.control[i]['modeCool'])
                 self.control[i - 1]['hold'].controlRight(self.control[i]['modeAuto'])
-
-                self.control[i - 1]['targetDn'].controlRight(self.control[i]['modeHeat'])
-                self.control[i - 1]['targetUp'].controlRight(self.control[i]['modeOff'])
                 self.control[i - 1]['apply'].controlRight(self.control[i]['reload'])
 
-        self.buttonClose.controlUp(self.control[1]['reload'])
+        self.buttonClose.controlUp(self.control[0]['reload'])
 
         # Set initial focus
         self.setFocus(self.buttonClose)
 
 
     def autoRefresh(self, refreshTime, stop):
-
         while True:
             waitTime = int(refreshTime)
             for i in range(waitTime):
                 if stop():
                     return
                 xbmc.sleep(1000)
-            Thread(target=self.getValues, args=(self.control[0], self.thermostat[0])).start()
-            Thread(target=self.getValues, args=(self.control[1], self.thermostat[1])).start()
+            for index in range(2):
+                Thread(target=self.getValues, args=(index,)).start()
 
 
     def start(self, refreshTime):
@@ -566,15 +551,19 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         self.close()
 
 
-    def setPendingChanges(self, control, flag):
+    def setPendingChanges(self, index, flag):
+        control = self.control[index]
+
         control['pendingChanges'] = flag
         #control['apply'].setLabel(control['apply'].getLabel(), textColor=WHITE if flag else GREY)
         control['apply'].setEnabled(flag)
 
 
-    def setFan(self, control):
+    def setFan(self, index):
         # Calulate position of options menu from currently selected element
         # and open options menu
+        control = self.control[index]
+
         dialog = SelectOptions(optionsFan,
                                control['fan'].getX(),
                                control['fan'].getY() + self.control[0]['fan'].getHeight() + 1,
@@ -585,16 +574,18 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         del dialog
 
         if value:
-            self.setPendingChanges(control, True)
+            self.setPendingChanges(index, True)
             control['fan'].setLabel(label2=str(value))
 
 
-    def setHold(self, control):
-        self.setPendingChanges(control, True)
+    def setHold(self, index):
+        self.setPendingChanges(index, True)
 
 
-    def setMode(self, control, mode):
-        self.setPendingChanges(control, True)
+    def setMode(self, index, mode):
+        control = self.control[index]
+
+        self.setPendingChanges(index, True)
 
         control['modeOff'].setSelected(mode == strOff)
         control['modeHeat'].setSelected(mode == strHeat)
@@ -605,27 +596,34 @@ class MyAddon(pyxbmct.AddonDialogWindow):
         control['target'].setLabel(control['target'].getLabel(), textColor=tColor[mode])
 
 
-    def setTargetUp(self, control):
+    def setTargetUp(self, index):
+        control = self.control[index]
+
         current = control['target'].getLabel()
 
         if current and current != strNV:
-            self.setPendingChanges(control, True)
+            self.setPendingChanges(index, True)
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) + 0.5)
             control['target'].setLabel(new + strDegreeCelsius)
 
 
-    def setTargetDn(self, control):
+    def setTargetDn(self, index):
+        control = self.control[index]
+
         current = control['target'].getLabel()
 
         if current and current != strNV:
-            self.setPendingChanges(control, True)
+            self.setPendingChanges(index, True)
             current = current[:-len(strDegreeCelsius)]
             new = str(float(current) - 0.5)
             control['target'].setLabel(new + strDegreeCelsius)
 
 
-    def applyValues(self, control, thermostat):
+    def applyValues(self, index):
+        control = self.control[index]
+        thermostat = self.thermostat[index]
+
         if not control['pendingChanges']:
             return
 
@@ -651,18 +649,21 @@ class MyAddon(pyxbmct.AddonDialogWindow):
 
         xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
         success = thermostat.update(fan=updateFan, mode=updateMode, hold=updateHold, target=updateTarget)
-        self.setPendingChanges(control, False) # self.setPendingChanges(control, not success)
+        self.setPendingChanges(index, False) # self.setPendingChanges(control, not success)
         xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
 
-        self.getValues(control, thermostat, reload=False)
+        self.getValues(index, reload=False)
 
 
-    def reloadValues(self, control, thermostat):
-        self.setPendingChanges(control, False)
-        self.getValues(control, thermostat)
+    def reloadValues(self, index):
+        self.setPendingChanges(index, False)
+        self.getValues(index)
 
 
-    def getValues(self, control, thermostat, reload=True):
+    def getValues(self, index, reload=True):
+        control = self.control[index]
+        thermostat = self.thermostat[index]
+
         if reload:
             xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
             thermostat.read()
