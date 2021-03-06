@@ -99,7 +99,7 @@ autoRefreshTime     = int(__addon__.getSetting('refreshTime')) # 30
 
 # Time delay between thermostat update and read in seconds
 delayTime           = 2
-doTest              = True
+doTest              = False
 
 
 # List of dictionaries with label and value for each option
